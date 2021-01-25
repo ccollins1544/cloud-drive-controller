@@ -1,4 +1,3 @@
-
 /**
  * ===============[ TABLE OF CONTENTS ]=================
  * 0. Initialize
@@ -27,15 +26,16 @@
  ******************************************************/
 /* ===============[ 0. Initialize ]===================*/
 // 0.1 Libraries 
-process.env.DOTENV_LOADED || require("dotenv").config();
+process.env.DOTENV_LOADED || require('dotenv').config();
 require('colors');
+const debug = require('debug')('controllers:s3');
 const aws = require('aws-sdk');
 const fs = require('fs');
 const path = require('path');
-const Utils = require("../utils");
+const Utils = require('../utils');
 
 // 0.2 Globals 
-const region = 'us-west-2';
+const region = process.env.S3_REGION;
 const Bucket = process.env.S3_BUCKET;
 const accessKeyId = process.env.S3_ID;
 const secretAccessKey = process.env.S3_SECRET;
@@ -64,7 +64,7 @@ const copyFile = async (s3Path, s3DstPath) => {
 
     s3.copyObject(params, function (err, data) {
       if (err) {
-        console.log(err, err.stack); // an error occurred
+        debug(err, err.stack); // an error occurred
         reject(new Error(err.stack));
         return;
       }
@@ -81,7 +81,7 @@ const copyFile = async (s3Path, s3DstPath) => {
  * @return {String} Location 
  */
 const pushFile = async (localPath, s3Path) => {
-  console.log('Reading Source File');
+  debug('Reading Source File');
   const Body = fs.createReadStream(localPath);
   const resp = await s3.upload({ Bucket, Key: s3Path, Body }).promise();
   return resp.Location;
@@ -142,7 +142,7 @@ const listFiles = async (s3Prefix, withString) => {
   return new Promise((resolve, reject) => {
     s3.listObjectsV2({ Bucket, Prefix: s3Prefix }, function (err, data) {
       if (err) {
-        console.log(err, err.stack); // an error occurred
+        debug(err, err.stack); // an error occurred
         reject(new Error(err.stack));
         return;
       }
@@ -166,7 +166,7 @@ const getTags = async (s3Path) => {
   return new Promise((resolve, reject) => {
     s3.getObjectTagging({ Bucket, Key: s3Path }, function (err, data) {
       if (err) {
-        console.log(err, err.stack); // an error occurred
+        debug(err, err.stack); // an error occurred
         reject(new Error(err.stack));
         return;
       }
@@ -198,7 +198,7 @@ const addTags = async (s3Path, TagSet) => {
     const Tagging = { TagSet };
     s3.putObjectTagging({ Bucket, Key: s3Path, Tagging }, function (err, data) {
       if (err) {
-        console.log(err, err.stack); // an error occurred
+        debug(err, err.stack); // an error occurred
         reject(new Error(err.stack));
         return;
       }
@@ -213,13 +213,13 @@ const addTags = async (s3Path, TagSet) => {
  * @param {String} s3Prefix - either directory (s3Prefix) or file (s3Path)
  * @param {String} fromString - string in filename being replaced (i.e. ~)
  * @param {String} _toString - string in filename to replace with (i.e. _)
- * @param {Boolean} dryRun - FALSE: copy/delete commands will be executed. TRUE: only console.log and copy/delete will not be executed. 
+ * @param {Boolean} dryRun - FALSE: copy/delete commands will be executed. TRUE: only debug and copy/delete will not be executed. 
  */
 const renameFile = async (s3Prefix, fromString, _toString, dryRun = false) => {
   // Handle 1 file at s3Prefix
   if (Boolean(path.extname(s3Prefix))) {
     let s3DstPath = s3Prefix.replace(fromString, _toString);
-    console.log(`${s3File}`.cyan + " ==> ".yellow + `${s3DstPath}`.green);
+    debug(`${s3File}`.cyan + " ==> ".yellow + `${s3DstPath}`.green);
 
     if (!dryRun) {
       await copyFile(s3Prefix, s3DstPath);
@@ -237,18 +237,18 @@ const renameFile = async (s3Prefix, fromString, _toString, dryRun = false) => {
   }, []);
 
   // COPY ALL FILES
-  console.log("Copying Files".yellow);
+  debug("Copying Files".yellow);
   await Utils.asyncForEach(listFilesArr, async (s3File) => {
     let s3DstPath = s3File.replace(fromString, _toString);
 
-    console.log(`${s3File}`.cyan + " ==> ".yellow + `${s3DstPath}`.green);
+    debug(`${s3File}`.cyan + " ==> ".yellow + `${s3DstPath}`.green);
     if (!dryRun) {
       await copyFile(s3File, s3DstPath);
     }
   });
 
   // DELETE ALL FILES
-  console.log("Deleting Files".yellow, listFilesArr);
+  debug("Deleting Files".yellow, listFilesArr);
   if (!dryRun) {
     return await deleteFile(listFilesArr);
   }
@@ -258,12 +258,12 @@ const renameFile = async (s3Prefix, fromString, _toString, dryRun = false) => {
  * 3.3 moveFile (UPDATE)
  * @param {String} s3Prefix - either source directory (s3Prefix) or file (s3Path)
  * @param {String} s3DstPath - either destination directory (s3Prefix) or file (s3Path)
- * @param {Boolean} dryRun - FALSE: copy/delete commands will be executed. TRUE: only console.log and copy/delete will not be executed. 
+ * @param {Boolean} dryRun - FALSE: copy/delete commands will be executed. TRUE: only debug and copy/delete will not be executed. 
  */
 const moveFile = async (s3Prefix, s3DstPath, dryRun = false) => {
   // Handle 1 file at s3Prefix to s3DstPath
   if (Boolean(path.extname(s3Prefix))) {
-    console.log(`${s3File}`.cyan + " ==> ".yellow + `${s3DstPath}`.green);
+    debug(`${s3File}`.cyan + " ==> ".yellow + `${s3DstPath}`.green);
 
     if (!dryRun) {
       await copyFile(s3Prefix, s3DstPath);
@@ -281,18 +281,18 @@ const moveFile = async (s3Prefix, s3DstPath, dryRun = false) => {
   }, []);
 
   // COPY ALL FILES
-  console.log("Copying Files".yellow);
+  debug("Copying Files".yellow);
   await Utils.asyncForEach(listFilesArr, async (s3File) => {
     let newFile = '/' + s3File.split(/[\\\/]/).slice(-3).pop();
 
-    console.log(`${s3File}`.cyan + " ==> ".yellow + `${s3DstPath}${newFile}`.green);
+    debug(`${s3File}`.cyan + " ==> ".yellow + `${s3DstPath}${newFile}`.green);
     if (!dryRun) {
       await copyFile(s3File, `${s3DstPath}${newFile}`);
     }
   });
 
   // DELETE ALL FILES
-  console.log("Deleting Files".yellow, listFilesArr);
+  debug("Deleting Files".yellow, listFilesArr);
   if (!dryRun) {
     return await deleteFile(listFilesArr);
   }
@@ -319,7 +319,7 @@ const deleteFile = async (s3Path, Quiet = false) => {
     if (Array.isArray(s3Path)) {
       s3.deleteObjects(params, function (err, data) {
         if (err) {
-          console.log(err, err.stack); // an error occurred
+          debug(err, err.stack); // an error occurred
           reject(new Error(err.stack));
           return;
         }
@@ -331,7 +331,7 @@ const deleteFile = async (s3Path, Quiet = false) => {
       // Handle 1 File at s3Path
       s3.deleteObject(params, function (err, data) {
         if (err) {
-          console.log(err, err.stack); // an error occurred
+          debug(err, err.stack); // an error occurred
           reject(new Error(err.stack));
           return;
         }

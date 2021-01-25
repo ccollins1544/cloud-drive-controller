@@ -1,5 +1,6 @@
 process.env.DOTENV_LOADED || require("dotenv").config();
 require("colors");
+const debug = require("debug")("tests:s3");
 const path = require("path");
 const Utils = require("../utils");
 const s3 = require("../controllers/s3")
@@ -7,7 +8,7 @@ const s3 = require("../controllers/s3")
 // Configure the following variables
 // ==================[ File ]====================================
 const fileName = "MyFile.pdf";
-const rootPath = `D:\\docs`;
+const rootPath = `C:\\Users\\ccollins\\Downloads`;
 
 // ==================[ GLOBALS ]====================================
 const localPath = path.join(rootPath, fileName);
@@ -54,7 +55,7 @@ const TESTS = [
   // LIST FILES
   {
     "name": `List Files in ${s3Prefix}`,
-    "enabled": true,
+    "enabled": false,
     "function": "listFiles",
     "args": { s3Prefix },
   },
@@ -118,7 +119,7 @@ const main = async (inputFunction, inputParams) => {
   if (process.argv.length > 2) {
     args = require('yargs').argv;
     args.inputParams = {};
-    let { s3Path, localPath, s3Prefix, TagSet, withString, s3DstPath, Quiet, fromString, _toString, dryRun, inputFunction, ...remainingArgs } = require('yargs').argv;
+    let { s3Path, localPath, s3Prefix, TagSet, withString, s3DstPath, Quiet, fromString, _toString, dryRun, inputFunction, ...remainingArgs } = require('yargs').argv || {};
     if (inputFunction) args = { inputFunction };
     if (s3Path) args.inputParams = { ...args.inputParams, s3Path };
     if (localPath) args.inputParams = { ...args.inputParams, localPath };
@@ -129,23 +130,33 @@ const main = async (inputFunction, inputParams) => {
     if (fromString) args.inputParams = { ...args.inputParams, fromString };
     if (_toString) args.inputParams = { ...args.inputParams, _toString };
     if (dryRun) args.inputParams = { ...args.inputParams, dryRun };
-    if (fromString) args.inputParams = { ...args.inputParams, fromString };
-    if (fromString) args.inputParams = { ...args.inputParams, fromString };
 
   } else if (inputParams) {
     args = { inputFunction, inputParams };
 
   } else {
-    console.log("===================================".red);
-    console.log("Invalid arguments passed.".red);
-    console.log({ ...inputParams, ...{ invalid_args: process.argv.slice(2) } });
-    console.log("===================================".red);
+    debug("===================================".yellow);
+    debug("Invalid arguments passed.".yellow);
+    debug({ ...inputParams, ...{ invalid_args: process.argv.slice(2) } });
+    debug("\nExample Usage,");
+    debug('node tests/s3.js --inputFunction="listFiles" --s3Prefix="docs/"'.cyan);
+    debug("\nList of functions include: ");
+    debug(TESTS.reduce((acc, t, i) => {
+      if (t.function && !acc.includes(t.function)) {
+        acc.push({
+          'inputFunction': t.function,
+          'inputParams': Object.keys(t.args)
+        });
+      }
+      return acc;
+    }, []))
+    debug("===================================".yellow);
     return 1;
   }
 
-  console.log("*-*-*-*-*-*-*-[ args ]*-*-*-*-*-*-*-*-*-*".yellow);
-  console.log(args);
-  console.log("*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*".yellow);
+  debug("*-*-*-*-*-*-*-[ args ]*-*-*-*-*-*-*-*-*-*".yellow);
+  debug(args);
+  debug("*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*".yellow);
 
   // Generate results;
   let results;
@@ -211,26 +222,34 @@ const main = async (inputFunction, inputParams) => {
     }
 
   } catch (error) {
-    console.log("=========================================".red);
-    console.log(error);
-    console.log("=========================================".red);
+    debug("=========================================".red);
+    debug(error);
+    debug("=========================================".red);
     return 1;
   }
 
-  console.log("____________ results ____________________".brightGreen);
-  console.log(results)
-  console.log("_________________________________________".brightGreen);
+  debug("____________ results ____________________".brightGreen);
+  debug(results)
+  debug("_________________________________________".brightGreen);
   return 0;
 }
 
 // RUN TESTS
 (async () => {
   let exit_code = 1;
+  let counter = 0;
+
   await Utils.asyncForEach(TESTS, async (test) => {
     if (test.enabled) {
-      console.log(test.name.toString().brightYellow);
+      debug(test.name.toString().brightYellow);
       exit_code = await main(test.function, test.args);
+      counter++;
     }
   });
+
+  if (counter === 0) {
+    exit_code = await main();
+  }
+
   process.exit(exit_code);
 })();
