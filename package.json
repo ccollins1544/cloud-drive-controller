@@ -1,0 +1,29 @@
+{
+  "name": "cloud-drive-controller",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ccollins1544/cloud-drive-controller.git"
+  },
+  "author": "Christopher Collins <chris@ccollins.io> (https://ccollins.io/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ccollins1544/cloud-drive-controller/issues"
+  },
+  "homepage": "https://github.com/ccollins1544/cloud-drive-controller#readme",
+  "dependencies": {
+    "aws-sdk": "^2.831.0",
+    "colors": "^1.4.0",
+    "dotenv": "^8.2.0",
+    "glob": "^7.1.6",
+    "moment": "^2.29.1",
+    "moment-timezone": "^0.5.32",
+    "node-google-drive": "^1.1.2",
+    "yargs": "^16.2.0"
+  }
+}
